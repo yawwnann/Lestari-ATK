@@ -164,7 +164,8 @@ class PesananResource extends Resource
                                         if ($pupukId) {
                                             $pupuk = Pupuk::find($pupukId);
                                             // Pastikan relasi kategoriPupuk sudah di-eager load atau diakses
-                                            return $pupuk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori';
+                                            /** @var \App\Models\KategoriAtk|null $kategoriAtk */
+                                            $kategori = $pupuk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori';
                                         }
                                         return 'Pilih Pupuk Dahulu';
                                     })
@@ -189,16 +190,15 @@ class PesananResource extends Resource
                                     return new HtmlString('<div class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Tidak ada item dalam pesanan ini.</div>');
                                 }
                                 $html = '<ul class="mt-2 border border-gray-200 dark:border-white/10 rounded-md divide-y divide-gray-200 dark:divide-white/10">';
-                                /** @var \App\Models\Pupuk $itemPupuk */
+                                /** @var \App\Models\Atk $itemPupuk */
                                 foreach ($record->items as $itemPupuk) {
-                                    $namaProduk = e($itemPupuk->nama_pupuk);
-                                    $jumlah = e($itemPupuk->pivot->jumlah);
-                                    $harga = formatFilamentRupiah($itemPupuk->pivot->harga_saat_pesanan);
-                                    $subtotal = formatFilamentRupiah($itemPupuk->pivot->jumlah * $itemPupuk->pivot->harga_saat_pesanan);
+                                    $namaProduk = method_exists($itemPupuk, 'getNamaAtkAttribute') ? e($itemPupuk->nama_atk) : e($itemPupuk->nama_pupuk);
+                                    $jumlah = $itemPupuk->pivot ? e($itemPupuk->pivot->jumlah) : '-';
+                                    $harga = $itemPupuk->pivot ? formatFilamentRupiah($itemPupuk->pivot->harga_saat_pesanan) : '-';
+                                    $subtotal = $itemPupuk->pivot ? formatFilamentRupiah($itemPupuk->pivot->jumlah * $itemPupuk->pivot->harga_saat_pesanan) : '-';
                                     $gambarUrl = $itemPupuk->gambar_utama ?? asset('images/placeholder_small.png');
-                                    // Tampilkan kategori jika ada (pastikan relasi kategoriPupuk di Pupuk.php sudah benar)
+                                    /** @var \App\Models\KategoriAtk|null $kategoriAtk */
                                     $kategori = $itemPupuk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori';
-
 
                                     $html .= "<li class=\"flex items-center justify-between py-3 px-4 text-sm hover:bg-gray-50 dark:hover:bg-white/5\">";
                                     $html .= "<div class=\"flex items-center\"><img src=\"{$gambarUrl}\" alt=\"{$namaProduk}\" class=\"w-10 h-10 rounded-md object-cover mr-3 flex-shrink-0\"/>";
