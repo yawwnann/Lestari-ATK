@@ -22,7 +22,7 @@ use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Forms\Components\Actions\Action as FormComponentAction;
-use Illuminate\Database\Eloquent\Builder; // Import untuk eager loading
+use Illuminate\Database\Eloquent\Builder;
 
 // Helper function untuk format Rupiah
 if (!function_exists('App\Filament\Resources\formatFilamentRupiah')) {
