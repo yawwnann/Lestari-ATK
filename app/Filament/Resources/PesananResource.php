@@ -117,6 +117,17 @@ class PesananResource extends Resource
                                 ->disabled(fn(string $operation, ?Pesanan $record): bool => $operation === 'view' || ($operation === 'create' && !$record?->status_pembayaran) || (isset($record) && in_array($record->status_pembayaran, ['lunas', 'gagal', 'expired', 'dibatalkan']))),
                             Forms\Components\Textarea::make('catatan_admin')->label('Catatan Internal Admin')->rows(4)->nullable()->columnSpanFull()
                                 ->disabled(fn(string $operation): bool => $operation === 'view'),
+                            Forms\Components\Placeholder::make('bukti_pembayaran')
+                                ->label('Bukti Pembayaran')
+                                ->content(function (?Pesanan $record) {
+                                    if ($record && $record->payment_proof_path) {
+                                        $url = $record->payment_proof_path;
+                                        return "<a href='{$url}' target='_blank'><img src='{$url}' alt='Bukti Pembayaran' style='max-width:200px;max-height:200px;border-radius:8px;'></a>";
+                                    }
+                                    return '<span class="text-gray-500">Belum ada bukti pembayaran</span>';
+                                })
+                                ->columnSpanFull()
+                                ->visible(fn(string $operation) => $operation === 'view' || $operation === 'edit'),
                         ]),
                 ]),
 
