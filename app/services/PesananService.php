@@ -4,7 +4,7 @@
 namespace App\Services;
 
 use App\Models\Pesanan;
-use App\Models\Pupuk;
+use App\Models\Atk;
 use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -29,43 +29,43 @@ class PesananService
 
             $pivotData = []; // Data untuk tabel pivot item_pesanan
             $calculatedBackendTotal = 0; // Total harga akan dihitung di backend
-            $listOfPupukToUpdateStock = []; // Tampung pupuk & jumlah untuk update stok
+            $listOfAtkToUpdateStock = []; // Tampung atk & jumlah untuk update stok
 
             if (empty($itemsData)) {
-                throw new Exception("Pesanan harus memiliki minimal 1 item pupuk.");
+                throw new Exception("Pesanan harus memiliki minimal 1 item ATK.");
             }
 
             // 1. Validasi & Siapkan Data Item (Ambil harga dari DB untuk akurasi)
             foreach ($itemsData as $item) {
-                $jumlah = intval($item['jumlah'] ?? 0);
-                $pupukId = $item['pupuk_id'] ?? null;
+                $jumlah = intval($item['quantity'] ?? 0);
+                $atkId = $item['atk_id'] ?? null;
 
-                if (!$pupukId || $jumlah <= 0) {
+                if (!$atkId || $jumlah <= 0) {
                     // Log warning atau throw Exception jika item tidak valid
                     Log::warning("Skipping invalid item in order creation", $item);
                     continue;
                 }
 
-                $pupuk = Pupuk::find($pupukId);
-                if (!$pupuk) {
-                    throw new Exception("Pupuk dengan ID {$pupukId} tidak ditemukan.");
+                $atk = Atk::find($atkId);
+                if (!$atk) {
+                    throw new Exception("ATK dengan ID {$atkId} tidak ditemukan.");
                 }
-                if ($pupuk->stok < $jumlah) {
-                    throw new Exception("Stok untuk pupuk '{$pupuk->nama_pupuk}' tidak mencukupi (Stok: {$pupuk->stok}, Dipesan: {$jumlah}).");
+                if ($atk->stok < $jumlah) {
+                    throw new Exception("Stok untuk ATK '{$atk->nama_atk}' tidak mencukupi (Stok: {$atk->stok}, Dipesan: {$jumlah}).");
                 }
 
                 // Gunakan harga dari database, bukan dari frontend payload, untuk akurasi
-                $hargaSaatPesanan = $pupuk->harga;
+                $hargaSaatPesanan = $atk->harga;
                 $calculatedBackendTotal += $jumlah * $hargaSaatPesanan;
 
                 // Siapkan data untuk tabel pivot
-                $pivotData[$pupukId] = [
+                $pivotData[$atkId] = [
                     'jumlah' => $jumlah,
                     'harga_saat_pesanan' => $hargaSaatPesanan
                 ];
 
-                // Simpan instance pupuk dan jumlahnya untuk pengurangan stok nanti
-                $listOfPupukToUpdateStock[] = ['instance' => $pupuk, 'jumlah' => $jumlah];
+                // Simpan instance atk dan jumlahnya untuk pengurangan stok nanti
+                $listOfAtkToUpdateStock[] = ['instance' => $atk, 'jumlah' => $jumlah];
             }
 
             // 2. Siapkan Data Pesanan Utama
@@ -100,9 +100,9 @@ class PesananService
                 // ✅ BENAR: Gunakan items() untuk relasi many-to-many dengan pivot data
                 $pesanan->items()->attach($pivotData);
 
-                // 5. Kurangi Stok Pupuk (setelah attach berhasil dan dalam transaksi)
-                foreach ($listOfPupukToUpdateStock as $pupukData) {
-                    $pupukData['instance']->decrement('stok', $pupukData['jumlah']);
+                // 5. Kurangi Stok ATK (setelah attach berhasil dan dalam transaksi)
+                foreach ($listOfAtkToUpdateStock as $atkData) {
+                    $atkData['instance']->decrement('stok', $atkData['jumlah']);
                 }
             } else {
                 // Jika tidak ada item valid, lempar exception atau hapus pesanan yang baru dibuat
@@ -136,26 +136,26 @@ class PesananService
 
             // TODO: Implementasi logika penyesuaian stok saat update (kompleks)
             // Ini akan melibatkan membandingkan kuantitas lama dengan kuantitas baru
-            // dan menyesuaikan stok pupuk secara accordingly (increment/decrement)
+            // dan menyesuaikan stok atk secara accordingly (increment/decrement)
 
             if (is_array($itemsData)) {
                 foreach ($itemsData as $item) {
-                    $jumlah = intval($item['jumlah'] ?? 0);
-                    $pupukId = $item['pupuk_id'] ?? null;
+                    $jumlah = intval($item['quantity'] ?? 0);
+                    $atkId = $item['atk_id'] ?? null;
 
-                    if ($pupukId && $jumlah > 0) {
-                        $pupuk = Pupuk::find($pupukId); // Ambil pupuk dari DB
-                        if (!$pupuk) {
-                            throw new Exception("Pupuk dengan ID {$pupukId} tidak ditemukan saat update.");
+                    if ($atkId && $jumlah > 0) {
+                        $atk = Atk::find($atkId); // Ambil atk dari DB
+                        if (!$atk) {
+                            throw new Exception("ATK dengan ID {$atkId} tidak ditemukan saat update.");
                         }
-                        if ($pupuk->stok < $jumlah) { // Basic check, but not full stock adjustment logic
-                            throw new Exception("Stok pupuk '{$pupuk->nama_pupuk}' tidak mencukupi untuk jumlah yang diminta saat update.");
+                        if ($atk->stok < $jumlah) { // Basic check, but not full stock adjustment logic
+                            throw new Exception("Stok ATK '{$atk->nama_atk}' tidak mencukupi untuk jumlah yang diminta saat update.");
                         }
 
-                        $hargaSaatPesanan = $pupuk->harga; // Gunakan harga dari DB
+                        $hargaSaatPesanan = $atk->harga; // Gunakan harga dari DB
                         $calculatedBackendTotal += $jumlah * $hargaSaatPesanan;
 
-                        $pivotData[$pupukId] = ['jumlah' => $jumlah, 'harga_saat_pesanan' => $hargaSaatPesanan];
+                        $pivotData[$atkId] = ['jumlah' => $jumlah, 'harga_saat_pesanan' => $hargaSaatPesanan];
                     }
                 }
             }
@@ -181,7 +181,7 @@ class PesananService
     }
 
     /**
-     * Menghapus pesanan dan mengembalikan stok pupuk
+     * Menghapus pesanan dan mengembalikan stok atk
      *
      * @param Pesanan $pesanan
      * @return bool
@@ -193,10 +193,12 @@ class PesananService
             // Load items untuk mendapatkan data pivot
             $pesanan->load('items');
 
-            // Kembalikan stok pupuk sebelum menghapus pesanan
-            foreach ($pesanan->items as $pupuk) {
-                $jumlahDipesan = $pupuk->pivot->jumlah;
-                $pupuk->increment('stok', $jumlahDipesan);
+            // Kembalikan stok atk sebelum menghapus pesanan
+            foreach ($pesanan->items as $atk) {
+                $jumlahDipesan = $atk->pivot?->jumlah ?? 0;
+                if ($jumlahDipesan > 0) {
+                    $atk->increment('stok', $jumlahDipesan);
+                }
             }
 
             // Hapus relasi pivot terlebih dahulu

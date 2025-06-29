@@ -32,13 +32,13 @@ class EditPesanan extends EditRecord
 
         $itemsDataFormatted = [];
         if ($pesananRecord->relationLoaded('items') && $pesananRecord->items->isNotEmpty()) {
-            foreach ($pesananRecord->items as $pupukDalamPesanan) { // <--- Ganti $ikanDalamPesanan jadi $pupukDalamPesanan
-                $pivotData = $pupukDalamPesanan->pivot;
+            foreach ($pesananRecord->items as $atkDalamPesanan) {
+                $pivotData = $atkDalamPesanan->pivot;
                 if ($pivotData) {
                     $itemsDataFormatted[] = [
-                        'pupuk_id' => $pupukDalamPesanan->id, // <--- Ganti 'ikan_id' jadi 'pupuk_id'
+                        'atk_id' => $atkDalamPesanan->id,
                         'jumlah' => $pivotData->jumlah,
-                        'harga_saat_pesanan' => $pivotData->harga_saat_pesanan, // <--- Ganti 'harga_saat_pesan' jadi 'harga_saat_pesanan'
+                        'harga_saat_pesanan' => $pivotData->harga_saat_pesanan,
                     ];
                 }
             }
@@ -48,7 +48,7 @@ class EditPesanan extends EditRecord
         $total = 0;
         foreach ($itemsDataFormatted as $item) {
             $jumlah = $item['jumlah'] ?? 0;
-            $harga = $item['harga_saat_pesanan'] ?? 0; // <--- Ganti 'harga_saat_pesan' jadi 'harga_saat_pesanan'
+            $harga = $item['harga_saat_pesanan'] ?? 0;
             if (is_numeric($jumlah) && is_numeric($harga)) {
                 $total += $jumlah * $harga;
             }
@@ -69,16 +69,16 @@ class EditPesanan extends EditRecord
             $pivotDataForSync = [];
             if (is_array($itemsDataFromForm)) {
                 foreach ($itemsDataFromForm as $item) {
-                    // GUNAKAN 'pupuk_id', BUKAN 'ikan_id'
-                    $pupukId = $item['pupuk_id'] ?? null; // <--- Ganti 'ikan_id' jadi 'pupuk_id'
+                    // GUNAKAN 'atk_id'
+                    $atkId = $item['atk_id'] ?? null;
                     $jumlah = $item['jumlah'] ?? 0;
-                    $harga = $item['harga_saat_pesanan'] ?? 0; // <--- Ganti 'harga_saat_pesan' jadi 'harga_saat_pesanan'
+                    $harga = $item['harga_saat_pesanan'] ?? 0;
 
-                    if ($pupukId && is_numeric($jumlah) && $jumlah > 0 && is_numeric($harga)) {
+                    if ($atkId && is_numeric($jumlah) && $jumlah > 0 && is_numeric($harga)) {
                         $calculatedTotal += $jumlah * $harga;
-                        $pivotDataForSync[$pupukId] = [ // <--- GUNAKAN $pupukId di sini
+                        $pivotDataForSync[$atkId] = [
                             'jumlah' => $jumlah,
-                            'harga_saat_pesanan' => $harga, // <--- Ganti 'harga_saat_pesan' jadi 'harga_saat_pesanan'
+                            'harga_saat_pesanan' => $harga,
                         ];
                     }
                 }

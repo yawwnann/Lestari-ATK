@@ -31,9 +31,8 @@ class StorePesananApiRequest extends FormRequest
             'alamat_pengiriman' => ['nullable', 'string'],
             'catatan' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'], // Wajib ada item, minimal 1
-            // Diubah: 'ikan_id' menjadi 'pupuk_id' dan tabel 'ikan' menjadi 'pupuk'
-            'items.*.pupuk_id' => ['required', 'integer', 'exists:pupuk,id'], // Setiap item harus punya pupuk_id yg valid di tabel pupuk
-            'items.*.jumlah' => ['required', 'integer', 'min:1'], // Setiap item harus punya jumlah minimal 1
+            'items.*.atk_id' => ['required', 'integer', 'exists:atk,id'], // Setiap item harus punya atk_id yg valid di tabel atk
+            'items.*.quantity' => ['required', 'integer', 'min:1'], // Setiap item harus punya quantity minimal 1
             // Jika Anda juga mengirim 'harga_saat_pesanan' dari frontend dan ingin memvalidasinya:
             // 'items.*.harga_saat_pesanan' => ['required', 'numeric', 'min:0'],
         ];
@@ -47,12 +46,12 @@ class StorePesananApiRequest extends FormRequest
     {
         return [
             'nama_pelanggan.required' => 'Nama pelanggan wajib diisi.',
-            'items.required' => 'Minimal ada satu item pupuk yang dipesan.', // Pesan disesuaikan
-            'items.min' => 'Minimal ada satu item pupuk yang dipesan.',      // Pesan disesuaikan
-            'items.*.pupuk_id.required' => 'ID Pupuk wajib dipilih untuk setiap item.', // Pesan disesuaikan
-            'items.*.pupuk_id.exists' => 'ID Pupuk yang dipilih tidak valid.',        // Pesan disesuaikan
-            'items.*.jumlah.required' => 'Jumlah wajib diisi untuk setiap item.',
-            'items.*.jumlah.min' => 'Jumlah minimal adalah 1 untuk setiap item.',
+            'items.required' => 'Minimal ada satu item ATK yang dipesan.', // Pesan disesuaikan
+            'items.min' => 'Minimal ada satu item ATK yang dipesan.',      // Pesan disesuaikan
+            'items.*.atk_id.required' => 'ID ATK wajib dipilih untuk setiap item.', // Pesan disesuaikan
+            'items.*.atk_id.exists' => 'ID ATK yang dipilih tidak valid.',        // Pesan disesuaikan
+            'items.*.quantity.required' => 'Jumlah wajib diisi untuk setiap item.',
+            'items.*.quantity.min' => 'Jumlah minimal adalah 1 untuk setiap item.',
         ];
     }
 }

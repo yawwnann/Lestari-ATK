@@ -4,7 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PesananResource\Pages;
 use App\Models\Pesanan;
-use App\Models\Pupuk;
+use App\Models\Atk;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -122,43 +122,43 @@ class PesananResource extends Resource
                                 ->content(function (?Pesanan $record) {
                                     if ($record && $record->payment_proof_path) {
                                         $url = $record->payment_proof_path;
-                                        return "<a href='{$url}' target='_blank'><img src='{$url}' alt='Bukti Pembayaran' style='max-width:200px;max-height:200px;border-radius:8px;'></a>";
+                                        return new HtmlString("<a href='{$url}' target='_blank'><img src='{$url}' alt='Bukti Pembayaran' style='max-width:200px;max-height:200px;border-radius:8px;'></a>");
                                     }
-                                    return '<span class="text-gray-500">Belum ada bukti pembayaran</span>';
+                                    return new HtmlString('<span class=\"text-gray-500\">Belum ada bukti pembayaran</span>');
                                 })
                                 ->columnSpanFull()
                                 ->visible(fn(string $operation) => $operation === 'view' || $operation === 'edit'),
                         ]),
                 ]),
 
-                Section::make('Item Pupuk Dipesan')
+                Section::make('Item ATK Dipesan')
                     ->collapsible()
                     ->schema([
                         Forms\Components\Repeater::make('items')
-                            ->label(fn(string $operation) => $operation === 'view' ? '' : 'Item Pupuk')
+                            ->label(fn(string $operation) => $operation === 'view' ? '' : 'Item ATK')
                             // HAPUS BARIS INI: ->relationship()
                             // Karena Anda menangani attach/sync secara manual di CreatePesanan.php dan EditPesanan.php,
-                            // menghapus ini akan mencegah Filament mencoba menyimpan model Pupuk yang tidak lengkap.
+                            // menghapus ini akan mencegah Filament mencoba menyimpan model Atk yang tidak lengkap.
                             ->schema([
-                                Forms\Components\Select::make('pupuk_id')->label('Pilih Pupuk')
+                                Forms\Components\Select::make('atk_id')->label('Pilih ATK')
                                     ->options(function (Get $get) {
                                         $currentItems = $get('../../items') ?? [];
-                                        $existingPupukIdsInRepeater = collect($currentItems)->pluck('pupuk_id')->filter()->all();
-                                        return Pupuk::query()
+                                        $existingAtkIdsInRepeater = collect($currentItems)->pluck('atk_id')->filter()->all();
+                                        return Atk::query()
                                             ->where('stok', '>', 0)
-                                            ->orWhereIn('id', $existingPupukIdsInRepeater)
-                                            ->orderBy('nama_pupuk')
-                                            ->pluck('nama_pupuk', 'id');
+                                            ->orWhereIn('id', $existingAtkIdsInRepeater)
+                                            ->orderBy('nama_atk')
+                                            ->pluck('nama_atk', 'id');
                                     })
                                     ->required()->reactive()->searchable()->preload()
                                     ->afterStateUpdated(function (Set $set, ?string $state) {
-                                        $pupuk = Pupuk::find($state);
-                                        $set('harga_saat_pesanan', $pupuk?->harga ?? 0);
+                                        $atk = Atk::find($state);
+                                        $set('harga_saat_pesanan', $atk?->harga ?? 0);
                                         // Set nilai untuk placeholder kategori
-                                        $set('kategori_pupuk_display', $pupuk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori');
+                                        $set('kategori_atk_display', $atk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori');
                                     })
                                     ->distinct()->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                    ->columnSpan(['md' => 4]), // Kolom untuk pilih pupuk
+                                    ->columnSpan(['md' => 4]), // Kolom untuk pilih atk
 
                                 Forms\Components\TextInput::make('jumlah')->label('Jumlah')->numeric()->required()->minValue(1)->default(1)->reactive()
                                     ->columnSpan(['md' => 2]), // Kolom untuk jumlah
@@ -167,25 +167,25 @@ class PesananResource extends Resource
                                     ->disabled()->dehydrated()
                                     ->columnSpan(['md' => 2]), // Kolom untuk harga satuan
 
-                                // Tambahkan placeholder untuk menampilkan kategori pupuk
-                                Forms\Components\Placeholder::make('kategori_pupuk_display')
+                                // Tambahkan placeholder untuk menampilkan kategori atk
+                                Forms\Components\Placeholder::make('kategori_atk_display')
                                     ->label('Kategori')
                                     ->content(function (Get $get) {
-                                        $pupukId = $get('pupuk_id');
-                                        if ($pupukId) {
-                                            $pupuk = Pupuk::find($pupukId);
-                                            // Pastikan relasi kategoriPupuk sudah di-eager load atau diakses
+                                        $atkId = $get('atk_id');
+                                        if ($atkId) {
+                                            $atk = Atk::find($atkId);
+                                            // Pastikan relasi kategoriAtk sudah di-eager load atau diakses
                                             /** @var \App\Models\KategoriAtk|null $kategoriAtk */
-                                            $kategori = $pupuk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori';
+                                            $kategori = $atk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori';
                                         }
-                                        return 'Pilih Pupuk Dahulu';
+                                        return 'Pilih ATK Dahulu';
                                     })
                                     ->columnSpan(['md' => 2]) // Sesuaikan lebar kolom
                                     ->visible(fn(string $operation) => $operation !== 'view'), // Hanya tampilkan di mode create/edit
                             ])
                             ->columns(10) // Sesuaikan jumlah kolom total di repeater
                             ->defaultItems(fn(string $operation) => $operation === 'create' ? 1 : 0)
-                            ->addActionLabel('Tambah Item Pupuk')
+                            ->addActionLabel('Tambah Item ATK')
                             ->live(onBlur: true)
                             ->afterStateUpdated(fn(Get $get, Set $set) => self::updateTotalPrice($get, $set))
                             ->deleteAction(
@@ -198,42 +198,49 @@ class PesananResource extends Resource
                             ->label(fn(string $operation) => $operation === 'view' ? 'Rincian Item Dipesan' : '')
                             ->content(function (?Pesanan $record): HtmlString {
                                 if (!$record || $record->items->isEmpty()) {
-                                    return new HtmlString('<div class="text-sm text-gray-500 dark:text-gray-400 italic py-2">Tidak ada item dalam pesanan ini.</div>');
+                                    return new HtmlString('<span class="text-gray-500">Tidak ada item yang dipesan</span>');
                                 }
-                                $html = '<ul class="mt-2 border border-gray-200 dark:border-white/10 rounded-md divide-y divide-gray-200 dark:divide-white/10">';
-                                /** @var \App\Models\Atk $itemPupuk */
-                                foreach ($record->items as $itemPupuk) {
-                                    $namaProduk = method_exists($itemPupuk, 'getNamaAtkAttribute') ? e($itemPupuk->nama_atk) : e($itemPupuk->nama_pupuk);
-                                    $jumlah = $itemPupuk->pivot ? e($itemPupuk->pivot->jumlah) : '-';
-                                    $harga = $itemPupuk->pivot ? formatFilamentRupiah($itemPupuk->pivot->harga_saat_pesanan) : '-';
-                                    $subtotal = $itemPupuk->pivot ? formatFilamentRupiah($itemPupuk->pivot->jumlah * $itemPupuk->pivot->harga_saat_pesanan) : '-';
-                                    $gambarUrl = $itemPupuk->gambar_utama ?? asset('images/placeholder_small.png');
-                                    /** @var \App\Models\KategoriAtk|null $kategoriAtk */
-                                    $kategori = $itemPupuk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori';
 
-                                    $html .= "<li class=\"flex items-center justify-between py-3 px-4 text-sm hover:bg-gray-50 dark:hover:bg-white/5\">";
-                                    $html .= "<div class=\"flex items-center\"><img src=\"{$gambarUrl}\" alt=\"{$namaProduk}\" class=\"w-10 h-10 rounded-md object-cover mr-3 flex-shrink-0\"/>";
-                                    $html .= "<div><span class=\"font-medium text-gray-900 dark:text-white\">{$namaProduk}</span><br><span class=\"text-gray-500 dark:text-gray-400\">{$jumlah} x {$harga} ({$kategori})</span></div></div>"; // Tambahkan kategori di sini
-                                    $html .= "<span class=\"font-medium text-gray-900 dark:text-white\">{$subtotal}</span></li>";
+                                $html = '<div class="space-y-2">';
+                                foreach ($record->items as $atk) {
+                                    $pivot = $atk->pivot;
+                                    if (!$pivot)
+                                        continue;
+
+                                    $subtotal = $pivot->jumlah * $pivot->harga_saat_pesanan;
+                                    $html .= '<div class="flex justify-between items-center p-2 bg-gray-50 rounded">';
+                                    $html .= '<div>';
+                                    $html .= '<div class="font-medium">' . htmlspecialchars($atk->nama_atk ?? 'Nama tidak tersedia') . '</div>';
+                                    $html .= '<div class="text-sm text-gray-600">Kategori: ' . htmlspecialchars($atk->kategoriAtk?->nama_kategori ?? 'Tidak Berkategori') . '</div>';
+                                    $html .= '</div>';
+                                    $html .= '<div class="text-right">';
+                                    $html .= '<div class="text-sm">' . $pivot->jumlah . ' x ' . formatFilamentRupiah($pivot->harga_saat_pesanan) . '</div>';
+                                    $html .= '<div class="font-medium">' . formatFilamentRupiah($subtotal) . '</div>';
+                                    $html .= '</div>';
+                                    $html .= '</div>';
                                 }
-                                $html .= '</ul>';
+                                $html .= '</div>';
                                 return new HtmlString($html);
-                            })->visibleOn('view')->columnSpanFull(),
+                            })
+                            ->columnSpanFull()
+                            ->visible(fn(string $operation) => $operation === 'view'),
                     ]),
             ]);
     }
 
     public static function updateTotalPrice(Get $get, Set $set): void
     {
-        $itemsData = $get('items') ?? [];
+        $items = $get('items');
         $total = 0;
-        foreach ($itemsData as $item) {
-            $jumlah = $item['jumlah'] ?? 0;
-            $harga = $item['harga_saat_pesanan'] ?? 0;
-            if (is_numeric($jumlah) && is_numeric($harga)) {
+
+        if (is_array($items)) {
+            foreach ($items as $item) {
+                $jumlah = (int) ($item['jumlah'] ?? 0);
+                $harga = (float) ($item['harga_saat_pesanan'] ?? 0);
                 $total += $jumlah * $harga;
             }
         }
+
         $set('total_harga', $total);
     }
 
@@ -263,7 +270,7 @@ class PesananResource extends Resource
             ->defaultSort('tanggal_pesanan', 'desc');
     }
 
-    // Penting: Pastikan relasi kategoriPupuk di-eager load saat mengambil Pesanan
+    // Penting: Pastikan relasi kategoriAtk di-eager load saat mengambil Pesanan
     // agar kategori bisa diakses di repeater mode view tanpa N+1 query.
     public static function getEloquentQuery(): Builder
     {

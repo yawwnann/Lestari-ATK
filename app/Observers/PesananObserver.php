@@ -7,24 +7,63 @@ use Illuminate\Support\Facades\Log;
 
 class PesananObserver
 {
-    public function created(Pesanan $pesanan)
+    /**
+     * Handle the Pesanan "created" event.
+     */
+    public function created(Pesanan $pesanan): void
     {
-        Log::info("--- PesananObserver@created START for Pesanan ID: {$pesanan->id} ---");
+        Log::info("Pesanan baru dibuat dengan ID: {$pesanan->id}");
 
-        // ✅ BENAR - Menggunakan relasi items
-        if ($pesanan->items->isEmpty()) {
-            Log::warning("Tidak ada item relasi ditemukan (items) untuk Pesanan ID: {$pesanan->id} saat observer 'created' dijalankan.");
-        } else {
-            Log::info("Ditemukan " . $pesanan->items->count() . " items untuk Pesanan ID: {$pesanan->id}");
-
-            // Contoh: Update stok pupuk
-            foreach ($pesanan->items as $pupuk) {
-                $jumlahPesan = $pupuk->pivot->jumlah;
-                $pupuk->decrement('stok', $jumlahPesan);
-                Log::info("Stok pupuk '{$pupuk->nama_pupuk}' dikurangi sebanyak {$jumlahPesan}");
+        // Contoh: Update stok ATK
+        foreach ($pesanan->items as $atk) {
+            $jumlahPesan = $atk->pivot?->jumlah ?? 0;
+            if ($jumlahPesan > 0) {
+                $atk->decrement('stok', $jumlahPesan);
+                $namaAtk = $atk->nama_atk ?? 'Unknown';
+                Log::info("Stok ATK '{$namaAtk}' dikurangi sebanyak {$jumlahPesan}");
             }
         }
+    }
 
-        Log::info("--- PesananObserver@created END for Pesanan ID: {$pesanan->id} ---");
+    /**
+     * Handle the Pesanan "updated" event.
+     */
+    public function updated(Pesanan $pesanan): void
+    {
+        Log::info("Pesanan dengan ID {$pesanan->id} telah diperbarui");
+    }
+
+    /**
+     * Handle the Pesanan "deleted" event.
+     */
+    public function deleted(Pesanan $pesanan): void
+    {
+        Log::info("Pesanan dengan ID {$pesanan->id} telah dihapus");
+
+        // Kembalikan stok ATK jika pesanan dihapus
+        foreach ($pesanan->items as $atk) {
+            $jumlahPesan = $atk->pivot?->jumlah ?? 0;
+            if ($jumlahPesan > 0) {
+                $atk->increment('stok', $jumlahPesan);
+                $namaAtk = $atk->nama_atk ?? 'Unknown';
+                Log::info("Stok ATK '{$namaAtk}' dikembalikan sebanyak {$jumlahPesan}");
+            }
+        }
+    }
+
+    /**
+     * Handle the Pesanan "restored" event.
+     */
+    public function restored(Pesanan $pesanan): void
+    {
+        Log::info("Pesanan dengan ID {$pesanan->id} telah dipulihkan");
+    }
+
+    /**
+     * Handle the Pesanan "force deleted" event.
+     */
+    public function forceDeleted(Pesanan $pesanan): void
+    {
+        Log::info("Pesanan dengan ID {$pesanan->id} telah dihapus secara permanen");
     }
 }

@@ -17,14 +17,14 @@ class CreatePesanan extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        // Pastikan Anda menggunakan 'pupuk_id' dan 'harga_saat_pesanan' di sini
+        // Pastikan Anda menggunakan 'atk_id' dan 'harga_saat_pesanan' di sini
         $items = $data['items'] ?? [];
         $total = 0;
         if (is_array($items)) {
             foreach ($items as $item) {
                 // Perhatikan: 'harga_saat_pesanan' (sesuai model Pesanan)
                 $jumlah = $item['jumlah'] ?? 0;
-                $harga = $item['harga_saat_pesanan'] ?? 0; // <--- Ganti 'harga_saat_pesan' jadi 'harga_saat_pesanan'
+                $harga = $item['harga_saat_pesanan'] ?? 0;
                 if (!empty($jumlah) && !empty($harga)) {
                     $total += $jumlah * $harga;
                 }
@@ -45,7 +45,7 @@ class CreatePesanan extends CreateRecord
                 if (is_array($itemsData)) {
                     foreach ($itemsData as $item) {
                         $jumlah = $item['jumlah'] ?? 0;
-                        $harga = $item['harga_saat_pesanan'] ?? 0; // <--- Ganti 'harga_saat_pesan' jadi 'harga_saat_pesanan'
+                        $harga = $item['harga_saat_pesanan'] ?? 0;
                         if (!empty($jumlah) && !empty($harga)) {
                             $total += $jumlah * $harga;
                         }
@@ -61,25 +61,25 @@ class CreatePesanan extends CreateRecord
             Log::info('Memulai proses attach item...');
             if (is_array($itemsData)) {
                 foreach ($itemsData as $item) {
-                    // GUNAKAN 'pupuk_id', BUKAN 'ikan_id'
-                    $pupukId = $item['pupuk_id'] ?? null; // <--- Ganti 'ikan_id' jadi 'pupuk_id'
+                    // GUNAKAN 'atk_id'
+                    $atkId = $item['atk_id'] ?? null;
                     $jumlah = $item['jumlah'] ?? 0;
-                    $harga = $item['harga_saat_pesanan'] ?? 0; // <--- Ganti 'harga_saat_pesan' jadi 'harga_saat_pesanan'
+                    $harga = $item['harga_saat_pesanan'] ?? 0;
 
-                    if ($pupukId && $jumlah > 0) {
-                        Log::info("Attaching Pupuk ID: {$pupukId} with Jumlah: {$jumlah}, Harga: {$harga}");
+                    if ($atkId && $jumlah > 0) {
+                        Log::info("Attaching ATK ID: {$atkId} with Jumlah: {$jumlah}, Harga: {$harga}");
                         try {
-                            $record->items()->attach($pupukId, [
+                            $record->items()->attach($atkId, [
                                 'jumlah' => $jumlah,
-                                'harga_saat_pesanan' => $harga // <--- Ganti 'harga_saat_pesan' jadi 'harga_saat_pesanan'
+                                'harga_saat_pesanan' => $harga
                             ]);
-                            Log::info("Berhasil attach Pupuk ID: {$pupukId}");
+                            Log::info("Berhasil attach ATK ID: {$atkId}");
                         } catch (\Exception $e) {
-                            Log::error("Gagal attach Pupuk ID: {$pupukId} - " . $e->getMessage());
+                            Log::error("Gagal attach ATK ID: {$atkId} - " . $e->getMessage());
                             // throw $e;
                         }
                     } else {
-                        Log::warning('Skipping item, Pupuk ID atau Jumlah tidak valid:', $item); // Sesuaikan log
+                        Log::warning('Skipping item, ATK ID atau Jumlah tidak valid:', $item);
                     }
                 }
             }

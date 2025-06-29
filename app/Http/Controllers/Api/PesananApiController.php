@@ -29,8 +29,8 @@ class PesananApiController extends Controller
             }
 
             // PERBAIKAN: Eager loading yang benar:
-            // 'items.pupuk.kategoriPupuk' akan memuat item pesanan, lalu pupuk yang terhubung
-            // dengan item tersebut, dan kemudian kategori pupuk yang terhubung dengan pupuk.
+            // 'items.kategoriAtk' akan memuat item pesanan, lalu atk yang terhubung
+            // dengan item tersebut, dan kemudian kategori atk yang terhubung dengan atk.
             $pesanans = Pesanan::where('user_id', $user->id)
                 ->with(['user', 'items.kategoriAtk'])
                 ->orderBy('created_at', 'desc')
