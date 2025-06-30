@@ -23,6 +23,7 @@ class PesananService
      */
     public function createOrder(array $data, ?User $user = null): Pesanan
     {
+        Log::debug('[PesananService] Memulai createOrder dengan data:', ['data' => $data, 'userId' => $user?->id]);
         return DB::transaction(function () use ($data, $user) {
             $itemsData = $data['items'] ?? [];
             $pesananData = Arr::except($data, ['items']); // Ambil semua data kecuali 'items'
@@ -128,6 +129,7 @@ class PesananService
      */
     public function updateOrder(Pesanan $pesanan, array $data): Pesanan
     {
+        Log::debug('[PesananService] Memulai updateOrder untuk Pesanan ID: ' . $pesanan->id, ['data' => $data]);
         return DB::transaction(function () use ($pesanan, $data) {
             $itemsData = $data['items'] ?? [];
             $pesananData = Arr::except($data, ['items']);

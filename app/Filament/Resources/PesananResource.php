@@ -45,6 +45,11 @@ class PesananResource extends Resource
     protected static ?int $navigationSort = 1;
     protected static ?string $recordTitleAttribute = 'id';
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['user', 'items.atk.kategoriAtk']);
+    }
+
     // Opsi status
     public static function getStatusPesananOptions(): array
     {
@@ -72,6 +77,10 @@ class PesananResource extends Resource
 
     public static function form(Form $form): Form
     {
+        \Illuminate\Support\Facades\Log::debug('[PesananResource] Memuat form schema.', [
+            'operation' => $form->getOperation(),
+            'record_id' => $form->getRecord()?->id
+        ]);
         return $form
             ->schema([
                 Grid::make(3)->schema([
@@ -96,7 +105,8 @@ class PesananResource extends Resource
                     Section::make('Status & Pembayaran')
                         ->columnSpan(1)
                         ->schema([
-                            Forms\Components\TextInput::make('total_harga')->label('Total Keseluruhan')->numeric()->prefix('Rp')->readOnly(),
+                            Forms\Components\TextInput::make('total_harga')->label('Total Keseluruhan')->numeric()->prefix('Rp')
+                                ->disabled()->dehydrated(),
 
                             Forms\Components\Select::make('metode_pembayaran')
                                 ->label('Metode Pembayaran')
@@ -136,9 +146,6 @@ class PesananResource extends Resource
                     ->schema([
                         Forms\Components\Repeater::make('items')
                             ->label(fn(string $operation) => $operation === 'view' ? '' : 'Item ATK')
-                            // HAPUS BARIS INI: ->relationship()
-                            // Karena Anda menangani attach/sync secara manual di CreatePesanan.php dan EditPesanan.php,
-                            // menghapus ini akan mencegah Filament mencoba menyimpan model Atk yang tidak lengkap.
                             ->schema([
                                 Forms\Components\Select::make('atk_id')->label('Pilih ATK')
                                     ->options(function (Get $get) {
@@ -152,45 +159,41 @@ class PesananResource extends Resource
                                     })
                                     ->required()->reactive()->searchable()->preload()
                                     ->afterStateUpdated(function (Set $set, ?string $state) {
+                                        if (!$state)
+                                            return;
                                         $atk = Atk::find($state);
                                         $set('harga_saat_pesanan', $atk?->harga ?? 0);
-                                        // Set nilai untuk placeholder kategori
                                         $set('kategori_atk_display', $atk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori');
                                     })
                                     ->distinct()->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                    ->columnSpan(['md' => 4]), // Kolom untuk pilih atk
+                                    ->columnSpan(['md' => 4]),
 
-                                Forms\Components\TextInput::make('jumlah')->label('Jumlah')->numeric()->required()->minValue(1)->default(1)->reactive()
-                                    ->columnSpan(['md' => 2]), // Kolom untuk jumlah
+                                Forms\Components\TextInput::make('jumlah')->label('Jumlah')->numeric()->required()->minValue(1)->default(1)
+                                    ->reactive()
+                                    ->columnSpan(['md' => 2]),
 
                                 Forms\Components\TextInput::make('harga_saat_pesanan')->label('Harga Satuan')->numeric()->prefix('Rp')->required()
                                     ->disabled()->dehydrated()
-                                    ->columnSpan(['md' => 2]), // Kolom untuk harga satuan
+                                    ->columnSpan(['md' => 2]),
 
-                                // Tambahkan placeholder untuk menampilkan kategori atk
                                 Forms\Components\Placeholder::make('kategori_atk_display')
                                     ->label('Kategori')
                                     ->content(function (Get $get) {
                                         $atkId = $get('atk_id');
-                                        if ($atkId) {
-                                            $atk = Atk::find($atkId);
-                                            // Pastikan relasi kategoriAtk sudah di-eager load atau diakses
-                                            /** @var \App\Models\KategoriAtk|null $kategoriAtk */
-                                            $kategori = $atk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori';
+                                        if (!$atkId) {
+                                            return 'Pilih ATK Dahulu';
                                         }
-                                        return 'Pilih ATK Dahulu';
+                                        $atk = Atk::find($atkId);
+                                        return $atk->kategoriAtk->nama_kategori ?? 'Tidak Berkategori';
                                     })
-                                    ->columnSpan(['md' => 2]) // Sesuaikan lebar kolom
-                                    ->visible(fn(string $operation) => $operation !== 'view'), // Hanya tampilkan di mode create/edit
+                                    ->columnSpan(['md' => 2])
+                                    ->visible(fn(string $operation) => $operation !== 'view'),
                             ])
-                            ->columns(10) // Sesuaikan jumlah kolom total di repeater
+                            ->columns(10)
                             ->defaultItems(fn(string $operation) => $operation === 'create' ? 1 : 0)
                             ->addActionLabel('Tambah Item ATK')
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn(Get $get, Set $set) => self::updateTotalPrice($get, $set))
                             ->deleteAction(
                                 fn(FormComponentAction $action) => $action
-                                    ->after(fn(Get $get, Set $set) => self::updateTotalPrice($get, $set))
                                     ->requiresConfirmation()
                             )
                             ->reorderable(false)->columnSpanFull()->hiddenOn('view'),
@@ -202,19 +205,21 @@ class PesananResource extends Resource
                                 }
 
                                 $html = '<div class="space-y-2">';
-                                foreach ($record->items as $atk) {
-                                    $pivot = $atk->pivot;
-                                    if (!$pivot)
+                                /** @var \App\Models\ItemPesanan $item */
+                                foreach ($record->items as $item) {
+                                    $atk = $item->atk;
+                                    if (!$atk) {
                                         continue;
+                                    }
 
-                                    $subtotal = $pivot->jumlah * $pivot->harga_saat_pesanan;
+                                    $subtotal = $item->jumlah * $item->harga_saat_pesanan;
                                     $html .= '<div class="flex justify-between items-center p-2 bg-gray-50 rounded">';
                                     $html .= '<div>';
                                     $html .= '<div class="font-medium">' . htmlspecialchars($atk->nama_atk ?? 'Nama tidak tersedia') . '</div>';
                                     $html .= '<div class="text-sm text-gray-600">Kategori: ' . htmlspecialchars($atk->kategoriAtk?->nama_kategori ?? 'Tidak Berkategori') . '</div>';
                                     $html .= '</div>';
                                     $html .= '<div class="text-right">';
-                                    $html .= '<div class="text-sm">' . $pivot->jumlah . ' x ' . formatFilamentRupiah($pivot->harga_saat_pesanan) . '</div>';
+                                    $html .= '<div class="text-sm">' . $item->jumlah . ' x ' . formatFilamentRupiah($item->harga_saat_pesanan) . '</div>';
                                     $html .= '<div class="font-medium">' . formatFilamentRupiah($subtotal) . '</div>';
                                     $html .= '</div>';
                                     $html .= '</div>';
@@ -226,22 +231,6 @@ class PesananResource extends Resource
                             ->visible(fn(string $operation) => $operation === 'view'),
                     ]),
             ]);
-    }
-
-    public static function updateTotalPrice(Get $get, Set $set): void
-    {
-        $items = $get('items');
-        $total = 0;
-
-        if (is_array($items)) {
-            foreach ($items as $item) {
-                $jumlah = (int) ($item['jumlah'] ?? 0);
-                $harga = (float) ($item['harga_saat_pesanan'] ?? 0);
-                $total += $jumlah * $harga;
-            }
-        }
-
-        $set('total_harga', $total);
     }
 
     public static function table(Table $table): Table
@@ -270,16 +259,11 @@ class PesananResource extends Resource
             ->defaultSort('tanggal_pesanan', 'desc');
     }
 
-    // Penting: Pastikan relasi kategoriAtk di-eager load saat mengambil Pesanan
-    // agar kategori bisa diakses di repeater mode view tanpa N+1 query.
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->with(['items.kategoriAtk', 'user']);
-    }
-
     public static function getRelations(): array
     {
-        return [];
+        return [
+            //
+        ];
     }
 
     public static function getPages(): array

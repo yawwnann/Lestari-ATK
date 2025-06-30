@@ -67,14 +67,12 @@ class Pesanan extends Model
     ];
 
     /**
-     * Relasi Many-to-Many ke model Atk melalui tabel pivot 'item_pesanan'.
-     * Nama method 'items' dipertahankan untuk kompatibilitas dengan Filament Repeater.
+     * Relasi HasMany ke model ItemPesanan.
+     * Satu pesanan memiliki banyak item pesanan.
      */
-    public function items(): BelongsToMany
+    public function items(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->belongsToMany(Atk::class, 'item_pesanan')
-            ->withPivot('jumlah', 'harga_saat_pesanan')
-            ->withTimestamps();
+        return $this->hasMany(ItemPesanan::class, 'pesanan_id');
     }
 
     /**

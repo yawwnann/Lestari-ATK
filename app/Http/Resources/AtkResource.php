@@ -32,6 +32,7 @@ class AtkResource extends JsonResource
             // Asumsi: Model Atk sudah menyimpan URL lengkap dari Cloudinary di atribut ini.
             // Jika ada accessor di model (misal: getGambarUtamaUrlAttribute), gunakan $this->gambar_utama_url
             'gambar_utama' => $this->gambar_utama,
+            'gambar_utama_url' => $this->gambar_utama_url,
 
             // Relasi ke KategoriAtkResource (pastikan KategoriResource sudah diupdate/disesuaikan)
             'kategori' => KategoriResource::make($this->whenLoaded('kategoriAtk')), // Mengacu pada relasi kategoriAtk

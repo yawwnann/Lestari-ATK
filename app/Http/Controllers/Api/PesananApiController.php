@@ -29,10 +29,10 @@ class PesananApiController extends Controller
             }
 
             // PERBAIKAN: Eager loading yang benar:
-            // 'items.kategoriAtk' akan memuat item pesanan, lalu atk yang terhubung
+            // 'items.atk' akan memuat item pesanan, lalu atk yang terhubung
             // dengan item tersebut, dan kemudian kategori atk yang terhubung dengan atk.
             $pesanans = Pesanan::where('user_id', $user->id)
-                ->with(['user', 'items.kategoriAtk'])
+                ->with(['user', 'items.atk.kategoriAtk'])
                 ->orderBy('created_at', 'desc')
                 ->paginate($request->query('per_page', 10));
 
@@ -61,7 +61,7 @@ class PesananApiController extends Controller
             $user->keranjangItems()->delete();
 
             // PERBAIKAN: Eager loading yang benar setelah pesanan dibuat
-            $pesanan->load(['user', 'items.kategoriAtk']);
+            $pesanan->load(['user', 'items.atk.kategoriAtk']);
 
             return (new PesananResource($pesanan))
                 ->response()
@@ -86,7 +86,7 @@ class PesananApiController extends Controller
         }
         try {
             // PERBAIKAN: Eager loading yang benar
-            $pesanan->load(['user', 'items.kategoriAtk']);
+            $pesanan->load(['user', 'items.atk.kategoriAtk']);
             return (new PesananResource($pesanan))->response();
         } catch (Exception $e) {
             Log::error("API Pesanan Show Error untuk pesanan #{$pesanan->id}: " . $e->getMessage(), ['exception_class' => get_class($e), 'trace' => $e->getTraceAsString()]);
@@ -119,7 +119,7 @@ class PesananApiController extends Controller
         try {
             $updatedPesanan = $pesananService->updateOrder($pesanan, $validatedData);
             // PERBAIKAN: Eager loading yang benar setelah update
-            $updatedPesanan->load(['user', 'items.kategoriAtk']);
+            $updatedPesanan->load(['user', 'items.atk.kategoriAtk']);
 
             return (new PesananResource($updatedPesanan))->response();
         } catch (Exception $e) {
@@ -172,7 +172,7 @@ class PesananApiController extends Controller
             $pesanan->status = 'selesai';
             $pesanan->save();
             // PERBAIKAN: Eager loading yang benar setelah status diubah
-            $pesanan->load(['user', 'items.kategoriAtk']);
+            $pesanan->load(['user', 'items.atk.kategoriAtk']);
             return (new PesananResource($pesanan))->response()->setStatusCode(200);
         } catch (\Exception $e) {
             Log::error("Gagal menandai pesanan #{$pesanan->id} selesai: " . $e->getMessage());

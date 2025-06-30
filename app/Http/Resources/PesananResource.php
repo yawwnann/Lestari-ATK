@@ -26,9 +26,22 @@ class PesananResource extends JsonResource
             'updated_at' => $this->updated_at,
 
             'items' => $this->whenLoaded('items', function () {
-                return $this->items->map(function ($atk) {
+                return $this->items->map(function ($item) {
+                    $atk = $item->atk;
+
+                    if (!$atk) {
+                        return [
+                            'id' => $item->id,
+                            'nama_atk' => 'Produk Tidak Ditemukan',
+                            'gambar_utama_url' => null,
+                            'jumlah' => $item->jumlah,
+                            'harga_saat_pesanan' => $item->harga_saat_pesanan,
+                            'is_deleted' => true,
+                        ];
+                    }
+
                     return [
-                        'id' => $atk->id,
+                        'id' => $item->id,
                         'nama_atk' => $atk->nama_atk,
                         'slug' => $atk->slug,
                         'deskripsi' => $atk->deskripsi,
@@ -36,10 +49,8 @@ class PesananResource extends JsonResource
                         'stok' => $atk->stok,
                         'kategori_atk' => $atk->kategoriAtk,
                         'gambar_utama_url' => $atk->gambar_utama_url,
-
-                        // Data dari tabel pivot item_pesanan
-                        'jumlah' => $atk->pivot?->jumlah ?? 0,
-                        'harga_saat_pesanan' => $atk->pivot?->harga_saat_pesanan ?? 0,
+                        'jumlah' => $item->jumlah,
+                        'harga_saat_pesanan' => $item->harga_saat_pesanan,
                     ];
                 });
             }),
