@@ -6,6 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $pesanan_id
+ * @property int $atk_id
+ * @property int $jumlah
+ * @property float $harga_saat_pesanan
+ */
 class ItemPesanan extends Model
 {
     use HasFactory;

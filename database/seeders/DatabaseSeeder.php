@@ -79,9 +79,9 @@ class DatabaseSeeder extends Seeder
                 $hargaSaatPesan = $atk->harga;
                 $totalHarga += $jumlah * $hargaSaatPesan;
 
-                // Lampirkan ATK ke pesanan melalui tabel pivot 'item_pesanan'
-                // beserta data tambahan (jumlah & harga_saat_pesanan)
-                $pesanan->items()->attach($atk->id, [
+                // Membuat item pesanan baru (bukan attach, karena relasi HasMany)
+                $pesanan->items()->create([
+                    'atk_id' => $atk->id,
                     'jumlah' => $jumlah,
                     'harga_saat_pesanan' => $hargaSaatPesan,
                 ]);

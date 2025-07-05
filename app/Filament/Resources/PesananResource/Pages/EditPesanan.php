@@ -32,15 +32,12 @@ class EditPesanan extends EditRecord
 
         $itemsDataFormatted = [];
         if ($pesananRecord->relationLoaded('items') && $pesananRecord->items->isNotEmpty()) {
-            foreach ($pesananRecord->items as $atkDalamPesanan) {
-                $pivotData = $atkDalamPesanan->pivot;
-                if ($pivotData) {
-                    $itemsDataFormatted[] = [
-                        'atk_id' => $atkDalamPesanan->id,
-                        'jumlah' => $pivotData->jumlah,
-                        'harga_saat_pesanan' => $pivotData->harga_saat_pesanan,
-                    ];
-                }
+            foreach ($pesananRecord->items as $itemPesanan) {
+                $itemsDataFormatted[] = [
+                    'atk_id' => $itemPesanan->getAttribute('atk_id'),
+                    'jumlah' => $itemPesanan->getAttribute('jumlah'),
+                    'harga_saat_pesanan' => $itemPesanan->getAttribute('harga_saat_pesanan'),
+                ];
             }
         }
         $data['items'] = $itemsDataFormatted;
@@ -88,11 +85,21 @@ class EditPesanan extends EditRecord
             $record->fill($pesananDataToUpdate);
             $record->save();
 
-            if (is_array($itemsDataFromForm)) {
-                $record->items()->sync($pivotDataForSync);
+            // Hitung ulang total_harga
+            if (!empty($data['items'])) {
+                $record->items()->delete();
+                $record->items()->createMany($data['items']);
+                $totalHarga = collect($data['items'])->sum(function ($item) {
+                    return ($item['jumlah'] ?? 0) * ($item['harga_saat_pesanan'] ?? 0);
+                });
+            } else {
+                // Jika items tidak dikirim, hitung dari relasi
+                $totalHarga = collect($record->items)->sum(function ($item) {
+                    return ($item->getAttribute('jumlah') ?? 0) * ($item->getAttribute('harga_saat_pesanan') ?? 0);
+                });
             }
-
-            $record->refresh()->load('items');
+            $record->total_harga = $totalHarga;
+            $record->save();
 
             Notification::make()
                 ->title('Pesanan berhasil diperbarui')

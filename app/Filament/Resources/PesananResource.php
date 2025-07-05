@@ -105,8 +105,39 @@ class PesananResource extends Resource
                     Section::make('Status & Pembayaran')
                         ->columnSpan(1)
                         ->schema([
-                            Forms\Components\TextInput::make('total_harga')->label('Total Keseluruhan')->numeric()->prefix('Rp')
-                                ->disabled()->dehydrated(),
+                            Forms\Components\TextInput::make('total_harga')
+                                ->label('Total Keseluruhan')
+                                ->numeric()
+                                ->prefix('Rp')
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->reactive()
+                                ->default(function (Get $get, ?Pesanan $record) {
+                                    // Jika sedang edit, ambil dari record
+                                    if ($record) {
+                                        return collect($record->items)->sum(function ($item) {
+                                            return ($item->getAttribute('jumlah') ?? 0) * ($item->getAttribute('harga_saat_pesanan') ?? 0);
+                                        });
+                                    }
+                                    // Jika sedang create/edit di form, hitung dari repeater
+                                    $items = $get('items') ?? [];
+                                    return collect($items)->sum(function ($item) {
+                                        return ($item['jumlah'] ?? 0) * ($item['harga_saat_pesanan'] ?? 0);
+                                    });
+                                })
+                                ->afterStateHydrated(function (Set $set, ?Pesanan $record, Get $get) {
+                                    // Set ulang total_harga saat form di-hydrate (edit)
+                                    if ($record) {
+                                        $set('total_harga', collect($record->items)->sum(function ($item) {
+                                            return ($item->getAttribute('jumlah') ?? 0) * ($item->getAttribute('harga_saat_pesanan') ?? 0);
+                                        }));
+                                    } else {
+                                        $items = $get('items') ?? [];
+                                        $set('total_harga', collect($items)->sum(function ($item) {
+                                            return ($item['jumlah'] ?? 0) * ($item['harga_saat_pesanan'] ?? 0);
+                                        }));
+                                    }
+                                }),
 
                             Forms\Components\Select::make('metode_pembayaran')
                                 ->label('Metode Pembayaran')
@@ -145,7 +176,7 @@ class PesananResource extends Resource
                     ->collapsible()
                     ->schema([
                         Forms\Components\Repeater::make('items')
-                            ->label(fn(string $operation) => $operation === 'view' ? '' : 'Item ATK')
+                            ->label('Item ATK')
                             ->schema([
                                 Forms\Components\Select::make('atk_id')->label('Pilih ATK')
                                     ->options(function (Get $get) {
@@ -168,7 +199,9 @@ class PesananResource extends Resource
                                     ->distinct()->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                     ->columnSpan(['md' => 4]),
 
-                                Forms\Components\TextInput::make('jumlah')->label('Jumlah')->numeric()->required()->minValue(1)->default(1)
+                                Forms\Components\TextInput::make('jumlah')->label('Jumlah')->numeric()->required()->minValue(1)->default(
+                                    1
+                                )
                                     ->reactive()
                                     ->columnSpan(['md' => 2]),
 
@@ -193,12 +226,14 @@ class PesananResource extends Resource
                             ->defaultItems(fn(string $operation) => $operation === 'create' ? 1 : 0)
                             ->addActionLabel('Tambah Item ATK')
                             ->deleteAction(
-                                fn(FormComponentAction $action) => $action
-                                    ->requiresConfirmation()
+                                fn(FormComponentAction $action) => $action->requiresConfirmation()
                             )
-                            ->reorderable(false)->columnSpanFull()->hiddenOn('view'),
+                            ->reorderable(false)
+                            ->columnSpanFull()
+                            ->visible(fn(string $operation) => $operation === 'create'),
+
                         Placeholder::make('items_view_display')
-                            ->label(fn(string $operation) => $operation === 'view' ? 'Rincian Item Dipesan' : '')
+                            ->label('Rincian Item Dipesan')
                             ->content(function (?Pesanan $record): HtmlString {
                                 if (!$record || $record->items->isEmpty()) {
                                     return new HtmlString('<span class="text-gray-500">Tidak ada item yang dipesan</span>');
@@ -212,14 +247,14 @@ class PesananResource extends Resource
                                         continue;
                                     }
 
-                                    $subtotal = $item->jumlah * $item->harga_saat_pesanan;
+                                    $subtotal = $item->getAttribute('jumlah') * $item->getAttribute('harga_saat_pesanan');
                                     $html .= '<div class="flex justify-between items-center p-2 bg-gray-50 rounded">';
                                     $html .= '<div>';
                                     $html .= '<div class="font-medium">' . htmlspecialchars($atk->nama_atk ?? 'Nama tidak tersedia') . '</div>';
                                     $html .= '<div class="text-sm text-gray-600">Kategori: ' . htmlspecialchars($atk->kategoriAtk?->nama_kategori ?? 'Tidak Berkategori') . '</div>';
                                     $html .= '</div>';
                                     $html .= '<div class="text-right">';
-                                    $html .= '<div class="text-sm">' . $item->jumlah . ' x ' . formatFilamentRupiah($item->harga_saat_pesanan) . '</div>';
+                                    $html .= '<div class="text-sm">' . $item->getAttribute('jumlah') . ' x ' . formatFilamentRupiah($item->getAttribute('harga_saat_pesanan')) . '</div>';
                                     $html .= '<div class="font-medium">' . formatFilamentRupiah($subtotal) . '</div>';
                                     $html .= '</div>';
                                     $html .= '</div>';
@@ -228,7 +263,7 @@ class PesananResource extends Resource
                                 return new HtmlString($html);
                             })
                             ->columnSpanFull()
-                            ->visible(fn(string $operation) => $operation === 'view'),
+                            ->visible(fn(string $operation) => in_array($operation, ['edit', 'view'])),
                     ]),
             ]);
     }

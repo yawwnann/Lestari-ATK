@@ -98,16 +98,26 @@ class PesananService
 
             // 4. Lampirkan Items ke Pesanan (Tabel Pivot) - DIPERBAIKI
             if (!empty($pivotData)) {
-                // ✅ BENAR: Gunakan items() untuk relasi many-to-many dengan pivot data
-                $pesanan->items()->attach($pivotData);
+                // SALAH untuk HasMany:
+                // $pesanan->items()->attach($pivotData);
 
-                // 5. Kurangi Stok ATK (setelah attach berhasil dan dalam transaksi)
+                // BENAR untuk HasMany:
+                $itemsToCreate = [];
+                foreach ($pivotData as $atkId => $pivot) {
+                    $itemsToCreate[] = [
+                        'atk_id' => $atkId,
+                        'jumlah' => $pivot['jumlah'],
+                        'harga_saat_pesanan' => $pivot['harga_saat_pesanan'],
+                    ];
+                }
+                $pesanan->items()->createMany($itemsToCreate);
+
+                // 5. Kurangi Stok ATK (setelah createMany berhasil dan dalam transaksi)
                 foreach ($listOfAtkToUpdateStock as $atkData) {
                     $atkData['instance']->decrement('stok', $atkData['jumlah']);
                 }
             } else {
-                // Jika tidak ada item valid, lempar exception atau hapus pesanan yang baru dibuat
-                $pesanan->delete(); // Hapus pesanan jika tidak ada item untuk dilampirkan
+                $pesanan->delete();
                 throw new Exception("Pesanan gagal dibuat: tidak ada item valid.");
             }
 
@@ -173,7 +183,8 @@ class PesananService
 
             // 2. Sync Items (Tabel Pivot) - DIPERBAIKI
             // ✅ BENAR: Gunakan items() untuk sync relasi many-to-many
-            $pesanan->items()->sync($pivotData);
+            $pesanan->items()->delete();
+            $pesanan->items()->createMany($data); // jika ingin update semua item
 
             // Load relasi items untuk response yang lengkap
             $pesanan->load('items');
